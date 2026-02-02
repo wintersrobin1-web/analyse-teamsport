@@ -13,9 +13,9 @@ let landmarker = null;
 let stream = null;
 let running = false;
 let lastFrameMs = 0;
-let fpsLimit = 30;
+const fpsLimit = 30;
 
-// sehr einfacher ID-Tracker (nearest-neighbor auf Fußpunkt)
+// Basic tracker (nearest neighbor on ankle-midpoint)
 let nextId = 1;
 const tracks = new Map(); // id -> {x,y,lastSeen}
 const MAX_AGE_MS = 600;
@@ -39,11 +39,10 @@ function dist(a, b) {
 }
 
 function updateTracks(dets, tMs) {
-  // greedy assignment
   const ids = Array.from(tracks.keys());
   const used = new Set();
+  const assigned = new Map();
 
-  const assigned = new Map(); // detIdx -> id
   for (let i = 0; i < dets.length; i++) {
     let bestId = null, bestD = Infinity;
     for (const id of ids) {
@@ -58,13 +57,11 @@ function updateTracks(dets, tMs) {
     }
   }
 
-  // update/create
   for (let i = 0; i < dets.length; i++) {
     const p = dets[i];
     if (assigned.has(i)) {
       const id = assigned.get(i);
       const tr = tracks.get(id);
-      // smoothing
       tr.x = 0.7 * tr.x + 0.3 * p.x;
       tr.y = 0.7 * tr.y + 0.3 * p.y;
       tr.lastSeen = tMs;
@@ -74,29 +71,20 @@ function updateTracks(dets, tMs) {
     }
   }
 
-  // prune
   for (const [id, tr] of tracks.entries()) {
     if ((tMs - tr.lastSeen) > MAX_AGE_MS) tracks.delete(id);
   }
 }
 
-function drawSkeletons(result) {
+function draw(result, tMs) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (!result?.landmarks?.length) return;
-
-  // simple connections
-  const edges = [
-    [11, 12], [11, 23], [12, 24], [23, 24],
-    [23, 25], [25, 27], [24, 26], [26, 28],
-    [11, 13], [13, 15], [12, 14], [14, 16],
-  ];
-
-  // detections for tracking: ankle midpoint
   const dets = [];
+  const lms = result?.landmarks || [];
 
-  for (const lm of result.landmarks) {
-    // footpoint: ankles 27,28; fallback hips 23,24
+  // Draw a few keypoints so we can see it works
+  for (const lm of lms) {
+    // ankle midpoint -> tracking point
     const a1 = lm[27], a2 = lm[28];
     const h1 = lm[23], h2 = lm[24];
 
@@ -110,21 +98,8 @@ function drawSkeletons(result) {
     }
     dets.push({ x: fx, y: fy });
 
-    // draw edges
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "rgba(255,255,255,0.75)";
-    for (const [a, b] of edges) {
-      const pa = lm[a], pb = lm[b];
-      if (!pa || !pb) continue;
-      ctx.beginPath();
-      ctx.moveTo(pa.x * canvas.width, pa.y * canvas.height);
-      ctx.lineTo(pb.x * canvas.width, pb.y * canvas.height);
-      ctx.stroke();
-    }
-
-    // draw keypoints (subset)
     ctx.fillStyle = "rgba(255,255,255,0.9)";
-    for (const k of [11,12,23,24,25,26,27,28]) {
+    for (const k of [11,12,23,24,27,28]) {
       const p = lm[k];
       if (!p) continue;
       ctx.beginPath();
@@ -133,43 +108,50 @@ function drawSkeletons(result) {
     }
   }
 
-  updateTracks(dets, performance.now());
+  updateTracks(dets, tMs);
 
-  // draw IDs at tracked points
+  // draw IDs
   ctx.font = "16px system-ui";
-  ctx.fillStyle = "rgba(0,0,0,0.6)";
   for (const [id, tr] of tracks.entries()) {
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(tr.x + 6, tr.y - 22, 46, 20);
+    ctx.fillStyle = "rgba(255,255,0,0.95)";
+    ctx.fillText(`#${id}`, tr.x + 10, tr.y - 7);
+
     ctx.beginPath();
     ctx.arc(tr.x, tr.y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillStyle = "rgba(255,255,0,0.9)";
     ctx.fill();
-
-    ctx.fillStyle = "rgba(255,255,0,0.95)";
-    ctx.fillText(`#${id}`, tr.x + 8, tr.y - 8);
   }
 }
 
 async function init() {
-  setStatus("Lade MediaPipe…");
-  const fileset = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
-  );
+  setStatus("JS läuft ✅ – lade MediaPipe…");
 
-  landmarker = await PoseLandmarker.createFromOptions(fileset, {
-    baseOptions: {
-      modelAssetPath:
-        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
-      delegate: "GPU"
-    },
-    runningMode: "VIDEO",
-    numPoses: 10
-  });
+  try {
+    const fileset = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+    );
 
-  setStatus("Bereit. Webcam starten oder Video laden.");
+    landmarker = await PoseLandmarker.createFromOptions(fileset, {
+      baseOptions: {
+        modelAssetPath:
+          "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+        delegate: "GPU"
+      },
+      runningMode: "VIDEO",
+      numPoses: 10
+    });
+
+    setStatus("Bereit. Webcam starten oder Video laden.");
+  } catch (e) {
+    setStatus("Fehler beim Laden von MediaPipe/CDN: " + String(e));
+    console.error(e);
+  }
 }
 
 async function loop(tMs) {
-  if (!running) return;
+  if (!running || !landmarker) return;
 
   const minDt = 1000 / fpsLimit;
   if ((tMs - lastFrameMs) < minDt) {
@@ -183,11 +165,16 @@ async function loop(tMs) {
       resizeCanvas();
     }
     const res = landmarker.detectForVideo(video, tMs);
-    drawSkeletons(res);
+    draw(res, tMs);
   }
 
   requestAnimationFrame(loop);
 }
+
+// Events
+video.addEventListener("loadedmetadata", () => {
+  resizeCanvas();
+});
 
 btnWebcam.addEventListener("click", async () => {
   try {
@@ -195,14 +182,14 @@ btnWebcam.addEventListener("click", async () => {
     video.srcObject = stream;
     video.muted = true;
     await video.play();
-    resizeCanvas();
+    tracks.clear();
     running = true;
     btnStop.disabled = false;
     btnWebcam.disabled = true;
     setStatus("Webcam läuft. Tracking aktiv.");
     requestAnimationFrame(loop);
   } catch (e) {
-    setStatus("Webcam Fehler: " + e);
+    setStatus("Webcam Fehler: " + String(e));
   }
 });
 
@@ -215,8 +202,10 @@ btnStop.addEventListener("click", () => {
     stream.getTracks().forEach(t => t.stop());
     stream = null;
   }
+
   video.pause();
   video.srcObject = null;
+  video.removeAttribute("src");
 
   tracks.clear();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -228,7 +217,6 @@ fileVideo.addEventListener("change", async () => {
   const f = fileVideo.files?.[0];
   if (!f) return;
 
-  // stop webcam if running
   if (stream) {
     stream.getTracks().forEach(t => t.stop());
     stream = null;
@@ -238,11 +226,11 @@ fileVideo.addEventListener("change", async () => {
   const url = URL.createObjectURL(f);
   video.src = url;
   video.muted = true;
-  await video.play();
-  resizeCanvas();
 
+  await video.play();
   tracks.clear();
   running = true;
+
   btnStop.disabled = false;
   btnWebcam.disabled = true;
 
