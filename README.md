@@ -20,3 +20,8 @@ Live-Demo: GitHub Pages (Frontend only). Tracking läuft vollständig im Browser
 
 ## Lizenz
 Dieses Projekt nutzt MediaPipe (Apache-2.0). Verarbeitung lokal im Browser. Keine Server.
+
+## Third-party
+This project uses Google MediaPipe (via @mediapipe/tasks-vision).
+MediaPipe is licensed under the Apache License 2.0.
+All trademarks and model assets belong to their respective owners.
