@@ -21,5 +21,21 @@
   <canvas id="overlay"></canvas>
 
   <script type="module" src="app.js"></script>
+  <button id="btnWebcam">Webcam starten</button>
+<button id="btnStop" disabled>Stop</button>
+
+<label>Video hochladen:
+  <input id="fileVideo" type="file" accept="video/*">
+</label>
+
+<p id="status">Bereit.</p>
+
+<div style="position:relative; max-width:900px;">
+  <video id="video" playsinline muted controls style="width:100%; background:#000;"></video>
+  <canvas id="overlay" style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none;"></canvas>
+</div>
+
+<script type="module" src="app.js"></script>
+
 </body>
 </html>
