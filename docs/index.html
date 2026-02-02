@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sport Multi-Person Tracker Demo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <h1>Sport Multi-Person Tracker (Demo)</h1>
+
+    <p>
+      Upload ein Video oder nutze eine Webcam. (Hinweis: Auf GitHub Pages läuft nur das Frontend.)
+    </p>
+
+    <section class="card">
+      <h2>Video testen</h2>
+      <input id="videoFile" type="file" accept="video/*" />
+      <button id="runBtn">Run (Demo)</button>
+      <p id="status"></p>
+      <video id="video" controls playsinline></video>
+      <canvas id="overlay"></canvas>
+    </section>
+
+    <footer>
+      <small>
+        Demo. Kein offizielles Produkt. 
+      </small>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
