@@ -4,6 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Sport Tracker Demo</title>
+  <style>
+    body{font-family:system-ui;margin:0;padding:16px;background:#111;color:#eee}
+    button,input{font-size:16px;margin:6px 6px 6px 0}
+    #stage{position:relative;max-width:900px}
+    #video{width:100%;max-height:520px;background:#000;display:block}
+    #overlay{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+  </style>
 </head>
 <body>
   <h1>Sport Tracker Demo</h1>
@@ -12,30 +19,19 @@
   <button id="btnStop" disabled>Stop</button>
 
   <div>
-    <label>Video hochladen: <input id="fileVideo" type="file" accept="video/*"></label>
+    <label>Video hochladen:
+      <input id="fileVideo" type="file" accept="video/*">
+    </label>
   </div>
 
   <p id="status">Bereit.</p>
 
-  <video id="video" controls playsinline muted></video>
-  <canvas id="overlay"></canvas>
+  <div id="stage">
+    <video id="video" playsinline muted controls></video>
+    <canvas id="overlay"></canvas>
+  </div>
 
+  <!-- WICHTIG: nur EINMAL und ganz am Ende -->
   <script type="module" src="app.js"></script>
-  <button id="btnWebcam">Webcam starten</button>
-<button id="btnStop" disabled>Stop</button>
-
-<label>Video hochladen:
-  <input id="fileVideo" type="file" accept="video/*">
-</label>
-
-<p id="status">Bereit.</p>
-
-<div style="position:relative; max-width:900px;">
-  <video id="video" playsinline muted controls style="width:100%; background:#000;"></video>
-  <canvas id="overlay" style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none;"></canvas>
-</div>
-
-<script type="module" src="app.js"></script>
-
 </body>
 </html>
